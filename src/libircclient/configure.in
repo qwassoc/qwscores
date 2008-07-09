@@ -1,0 +1,54 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ(2.52)
+AC_INIT(libircclient, 1.2, tim@krasnogorsk.ru)
+AC_CONFIG_SRCDIR([include/libircclient.h])
+AC_CONFIG_HEADER([include/config.h])
+
+# Check for command-line
+AC_ARG_ENABLE(enable_debug,
+	[  --enable-debug         compile with debug information (no)])
+
+AC_ARG_ENABLE(disable_thread,
+	[  --disable-thread       disable multithread build (no)])
+
+# Checks for programs.
+AC_PROG_CXX
+AC_PROG_CC
+AC_CHECK_TOOL(AR, ar, :)
+AC_PROG_RANLIB
+
+# Checks for header files.
+AC_HEADER_STDC
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_HEADER_STDBOOL
+AC_C_CONST
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_SELECT_ARGTYPES
+AC_FUNC_STAT
+AC_CHECK_FUNCS([gethostbyname_r localtime_r socket inet_ntoa])
+
+AC_CHECK_LIB(socket, socket, AC_DEFINE(HAVE_SOCKET) LIBS="$LIBS -lsocket")
+AC_CHECK_LIB(nsl, inet_ntoa, AC_DEFINE(HAVE_INET_NTOA) LIBS="$LIBS -lnsl")
+
+if test "$enable_debug" = "yes"; then
+	CFLAGS="-g -DENABLE_DEBUG"
+else
+	CFLAGS="-O3"
+fi
+
+if test "$disable_thread" != "yes"; then
+	CFLAGS="$CFLAGS -DENABLE_THREADS -D_REENTRANT"
+fi
+
+AC_SUBST(CFLAGS)
+AC_SUBST(LIBS)
+AC_SUBST(PREFIX)
+AC_CONFIG_FILES([examples/Makefile src/Makefile])
+AC_OUTPUT

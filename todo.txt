@@ -1,0 +1,3 @@
+- irc auth
+- ragequit protection/handling
+- flood protection
