@@ -585,7 +585,7 @@ void Main_AddCmds(void)
 
 int main(int argc, char **argv)
 {
-	printf("QW Scores 0.2\nby JohnNy_cz\n---\n\n");
+	printf("QW Scores 0.3\nby JohnNy_cz\n---\n\n");
 
 	if (!InitOS()) {
 		return -1;
