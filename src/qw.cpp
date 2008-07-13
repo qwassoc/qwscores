@@ -31,6 +31,7 @@
 #define QW_REPLY_HEADER "\xff\xff\xff\xffn"
 #define QW_REPLY_HEADER_LEN (sizeof(QW_REPLY_HEADER)-1)
 #define QW_MASTER_QUERY "c\n"
+#define QW_MASTER_REPLY_BUFFER 10240
 
 
 static char readableChars[256] = {	'.', '_' , '_' , '_' , '_' , '.' , '_' , '_' , '_' , '_' , '\n' , '_' , '\n' , '>' , '.' , '.',
@@ -58,10 +59,11 @@ void QW_ScanSource(const char *ip, short port, NewServer_fnc report, void *arg)
     char request[] = QW_MASTER_QUERY;
 	SOCKET newsocket = getsockudp(ip, port);
     int ret, i;
-    unsigned char answer[10000];
+    unsigned char answer[QW_MASTER_REPLY_BUFFER];
     fd_set fd;
 	struct timeval tv;
 
+	printf("Scanning master server %s:%d\n",ip,(int) port);
 	if (newsocket == INVALID_SOCKET) {
 		printf("Couldn't resolve '%s'\n", ip);
 #ifndef WIN32
@@ -83,34 +85,41 @@ void QW_ScanSource(const char *ip, short port, NewServer_fnc report, void *arg)
     ret = select(newsocket+1, &fd, NULL, NULL, &tv);
 
     // get answer
-    if (ret > 0)
-        ret = recvfrom (newsocket, (char *) answer, 10000, 0, NULL, NULL);
+	if (ret > 0) {
+        ret = recvfrom (newsocket, (char *) answer, QW_MASTER_REPLY_BUFFER, 0, NULL, NULL);
 
-    if (ret > 0  &&  ret < 10000)
-    {
-        answer[ret] = 0;
+		if (ret > 0  &&  ret < QW_MASTER_REPLY_BUFFER)
+		{
+			answer[ret] = 0;
 
-        if (memcmp(answer, "\xff\xff\xff\xff\x64\x0a", 6))
-        {
-            closesocket(newsocket);
-			printf("Wrong reply from the master server\n");
-            return;
-        }
+			if (memcmp(answer, "\xff\xff\xff\xff\x64\x0a", 6))
+			{
+				closesocket(newsocket);
+				printf("Wrong reply from the master server\n");
+				return;
+			}
 
-		int c;
-        for (c=0, i=6; i+5 < ret; i+=6, c++)
-        {
-			char ip[64];
-			int port = 256 * (int)answer[i+4] + (int)answer[i+5];
+			int c;
+			for (c=0, i=6; i+5 < ret; i+=6, c++)
+			{
+				char ip[64];
+				int port = 256 * (int)answer[i+4] + (int)answer[i+5];
 
-			snprintf(ip, sizeof(ip), "%u.%u.%u.%u",
-                (int)answer[i+0], (int)answer[i+1],
-                (int)answer[i+2], (int)answer[i+3]);
-                
-			report(ip, port, arg, c);
-			// c->Add(new ServerScan(ip, port, c, (apptime) time));
-        }
-    }
+				snprintf(ip, sizeof(ip), "%u.%u.%u.%u",
+					(int)answer[i+0], (int)answer[i+1],
+					(int)answer[i+2], (int)answer[i+3]);
+	                
+				report(ip, port, arg, c);
+				// c->Add(new ServerScan(ip, port, c, (apptime) time));
+			}
+		}
+		else {
+			printf("Master server returned %d bytes\n",ret);
+		}
+	}
+	else {
+		printf("No reply from master server %s:%d\n",ip,port);
+	}
 
     closesocket(newsocket);
 }
