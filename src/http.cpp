@@ -162,8 +162,8 @@ void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore 
 		request[l] = '\0';
 	}
 	if (!strstarts(request, "HTTP/1.1 200 OK")) {
-		printf("HTTP server replied with an error\n");
-		printf("%s\n", request);
+		printf("HTTP server '%s' replied with an error:\n", ip);
+		printf("%s\n---\n", request);
 	}
 
 	closesocket(http_socket);
