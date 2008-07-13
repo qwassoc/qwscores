@@ -29,6 +29,7 @@
 #define QW_SERVER_QUERY_LEN (sizeof(QW_SERVER_QUERY)-1)
 #define QW_REPLY_HEADER "\xff\xff\xff\xffn"
 #define QW_REPLY_HEADER_LEN (sizeof(QW_REPLY_HEADER)-1)
+#define QW_MASTER_QUERY "c\n"
 
 
 static char readableChars[256] = {	'.', '_' , '_' , '_' , '_' , '.' , '_' , '_' , '_' , '_' , '\n' , '_' , '\n' , '>' , '.' , '.',
@@ -53,7 +54,7 @@ static void CreateReadableChars(void) {
 void QW_ScanSource(const char *ip, short port, NewServer_fnc report, void *arg)
 {
     // get servers from master server
-    char request[] = "c\n";
+    char request[] = QW_MASTER_QUERY;
 	SOCKET newsocket = getsockudp(ip, port);
     int ret, i;
     unsigned char answer[10000];

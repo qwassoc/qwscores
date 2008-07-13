@@ -135,8 +135,14 @@ void ReportMatchEnd(const char *ip_, short port, const serverinfo *svinfo, bool 
 		return;
 	}
 
-	playerscore *scores = new playerscore[svinfo->players.size()];
 	char *ip = strdup(ip_);
+
+	if (!ip) {
+		printf("Error: Not enough memory!\n");
+		return;
+	}
+
+	playerscore *scores = new playerscore[svinfo->players.size()];
 
 	bool teamplay = svinfo->GetEntryInt("teamplay") != 0 && svinfo->players.begin()->team[0] && svinfo->players.size() > 2;
 	int i;
