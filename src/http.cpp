@@ -8,6 +8,7 @@
 	#include <netinet/in.h>	/* sockaddr_in */
 	#include <netdb.h>
 	#include <unistd.h>
+	#include <sys/socket.h>
 #else
 	#include <winsock.h>
 #endif

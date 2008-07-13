@@ -4,6 +4,7 @@ typedef int SOCKET;
 #define INVALID_SOCKET (-1)
 #define closesocket(s) close(s)
 #define stricmp(x,y) strcasecmp(x,y)
+#include <netinet/in.h>
 #endif
 
 SOCKET getsock(const char *host, unsigned short port, int family, int socktype, int protocol);

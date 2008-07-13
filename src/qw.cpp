@@ -9,6 +9,7 @@
 #include "windows.h"
 #else
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netdb.h>
 #include <unistd.h>
 #define Sleep(x) usleep((x)*1000)
