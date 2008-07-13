@@ -53,26 +53,22 @@ static void CreateReadableChars(void) {
 void QW_ScanSource(const char *ip, short port, NewServer_fnc report, void *arg)
 {
     // get servers from master server
-    char request[] = {'c', '\n', '\0'};
-    int newsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    char request[] = "c\n";
+	SOCKET newsocket = getsockudp(ip, port);
     int ret, i;
     unsigned char answer[10000];
     fd_set fd;
-    struct timeval tv;
-	struct hostent *hostInfo = gethostbyname(ip);
-	struct sockaddr_in serverAddress;
+	struct timeval tv;
 
-	if (!hostInfo) {
+	if (newsocket == INVALID_SOCKET) {
 		printf("Couldn't resolve '%s'\n", ip);
-		return;
+#ifndef WIN32
+		herror("gethostbyname");
+#endif
 	}
 
-	serverAddress.sin_family = hostInfo->h_addrtype;
-	memcpy((char *) &serverAddress.sin_addr.s_addr, hostInfo->h_addr_list[0], hostInfo->h_length);
-	serverAddress.sin_port = htons(port);
-
-    ret = sendto (newsocket, request, sizeof(request), 0,
-                  (struct sockaddr *)&serverAddress, sizeof(serverAddress) );
+	ret = send(newsocket, request, sizeof(request), 0);
+				  
 	if (ret < 0) {
 		printf("Couldn't send query to master server\n");
         return;
@@ -80,7 +76,7 @@ void QW_ScanSource(const char *ip, short port, NewServer_fnc report, void *arg)
 
 	FD_ZERO(&fd);
 	FD_SET(newsocket, &fd);
-    tv.tv_sec = 5;
+    tv.tv_sec = QW_MASTER_TIMEOUT_SECS;
     tv.tv_usec = 0;
     ret = select(newsocket+1, &fd, NULL, NULL, &tv);
 

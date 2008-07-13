@@ -15,12 +15,8 @@
 #include "utils.h"
 #include "conf.h"
 #include "qw.h"
+#include "sockets.h"
 
-
-static bool http_inited = false;
-static int socketDescriptor = 0;
-static struct sockaddr_in serverAddress;
-static struct hostent *httphostInfo;
 
 struct HttpTarget {
 	std::string host;
@@ -33,36 +29,6 @@ static http_targets_t http_targets;
 
 void HTTP_Init(void)
 {
-}
-
-static void HTTP_Connect(const char *server, short port)
-{
-	httphostInfo = gethostbyname(server);
-	if (!httphostInfo) {
-		printf("Couldn't resolve HTTP host name\n");
-		return;
-	}
-
-	socketDescriptor = socket(AF_INET, SOCK_STREAM, 0);
-	if (socketDescriptor < 0) {
-		printf("Couldn't create HTTP socket\n");
-		return;
-	}
-
-	serverAddress.sin_family = httphostInfo->h_addrtype;
-	memcpy((char *) &serverAddress.sin_addr.s_addr,
-		httphostInfo->h_addr_list[0], httphostInfo->h_length);
-	serverAddress.sin_port = htons(port);
-
-	if (connect(socketDescriptor,
-		(struct sockaddr *) &serverAddress,
-		sizeof(serverAddress)) < 0)
-	{
-		printf("Couldn't connect to HTTP server\n");
-		return;
-	}
-
-	http_inited = true;
 }
 
 bool ParseURL(const char *url, std::string & server, short & port, std::string & script)
@@ -135,9 +101,12 @@ static void add_http_query(char *s, size_t bufsize, const char *key, const char 
 void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore *scores, bool teamplay, const char *http_host, short http_port, const char *http_script)
 {
 	size_t numscores = s.players.size();
+	SOCKET http_socket = getsocktcp(ip, port);
 
-	HTTP_Connect(http_host, http_port);
-	if (!http_inited) return;
+	if (http_socket == INVALID_SOCKET) {
+		printf("Couldn't connect to %s on HTTP port (%d)\n", ip, (int) port);
+		return;
+	}
 
 	char query[HTTP_REQUEST_BUFFER] = "";
 	
@@ -183,13 +152,13 @@ void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore 
 		http_script, http_host, strlen(query), query);	
 
 	// printf("%s",request);
-	if (send(socketDescriptor, request, strlen(request) + 1, 0) < 0) {
+	if (send(http_socket, request, strlen(request) + 1, 0) < 0) {
 		printf("Couldn't send to HTTP server\n");
 		return;
 	}
 
 	// just forget the result anyway
-	int l = recv(socketDescriptor, request, HTTP_REQUEST_BUFFER, 0);
+	int l = recv(http_socket, request, HTTP_REQUEST_BUFFER, 0);
 	if (l > 0) {
 		request[l] = '\0';
 	}
@@ -198,7 +167,7 @@ void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore 
 		printf("%s\n", request);
 	}
 
-	closesocket(socketDescriptor);
+	closesocket(http_socket);
 }
 
 void HTTP_AddTarget(const char *url, bool &)

@@ -41,6 +41,7 @@ void Conf_AcceptCommand(const char *line, bool & breakflag);
 #define QW_DEFAULT_MASTER_SERVER_PORT 27000
 #define QW_DEFAULT_SVPORT 27500
 #define QW_MASTER_RESCAN_TIME (60*60*6)
+#define QW_MASTER_TIMEOUT_SECS 5
 #define QW_SERVER_QUERY_TIMEOUT_SEC 1
 #define QW_SERVER_QUERY_TIMEOUT_USEC 5000
 
