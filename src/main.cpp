@@ -4,6 +4,7 @@
 #include <queue>
 #include <set>
 #include <iostream>
+#include <fstream>
 #include "common.h"
 #include "conf.h"
 #ifdef WIN32
@@ -573,6 +574,32 @@ void Cmd_AddMaster(const char* args, bool &)
 	cal.ScheduleMasterScan(AppClock.GetAppTime(), ip.c_str(), port);
 }
 
+void Cmd_AddFileList(const char* args, bool &)
+{
+	if (*args) {
+		std::fstream i (args, std::ios_base::in);
+		if (i.good()) {
+			const unsigned int MAX_LINE_LENGTH = 256;
+			char buffer[MAX_LINE_LENGTH];
+
+			while (!i.eof()) {
+				i.getline(buffer, MAX_LINE_LENGTH);
+				if (buffer[0]) {
+					bool dummy;
+
+					Cmd_AddIP(buffer, dummy);
+				}
+			}
+		}
+		else {
+			printf("Couldn't open '%s' for reading\n", args);
+		}
+	}
+	else {
+		printf("Usage: addfilelist <filename>\nadds servers from given list\n");
+	}
+}
+
 void Cmd_Help(const char *args, bool &)
 {
 	Conf_ListCommands();
@@ -586,6 +613,7 @@ void Main_AddCmds(void)
 	Conf_CmdAdd("addip", Cmd_AddIP);
 	Conf_CmdAdd("addmaster", Cmd_AddMaster);
 	Conf_CmdAdd("addhttp", HTTP_AddTarget);
+	Conf_CmdAdd("addfilelist", Cmd_AddFileList);
 	Conf_CmdAdd("help", Cmd_Help);
 }
 
