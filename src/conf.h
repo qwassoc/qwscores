@@ -71,3 +71,4 @@ void Conf_AcceptCommand(const char *line, bool & breakflag);
 #define SUDDENDEATH_TIMELEFT 0
 #define MICROSCANTIME 2
 #define INITIAL_SCANS_INTERVAL (0.33)
+#define CALENDAR_LOOP_SLEEP_MIN_INTERVAL 100

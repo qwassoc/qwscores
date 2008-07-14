@@ -5,6 +5,7 @@
 #include <windows.h>
 #else
 #include <pthread.h>
+#include <unistd.h>
 #endif
 #include "utils.h"
 
@@ -83,6 +84,20 @@ size_t strlcat(char *dst, const char *src, size_t siz)
 	return(dlen + (s - src));       /* count does not include NUL */
 }
 #endif
+
+void Sys_Sleep_ms(unsigned int miliseconds)
+{
+#ifdef WIN32
+	Sleep(miliseconds);
+#else
+	if ((miliseconds % 1000) == 0) {
+		sleep(miliseconds/1000); // convert to seconds
+	}
+	else {
+		usleep(miliseconds*1000); // convert to microseconds
+	}
+#endif
+}
 
 #ifdef _WIN32
 int Sys_CreateThread(DWORD (WINAPI *func)(void *), void *param)

@@ -27,6 +27,10 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 
 
+// multi-platform sleep
+void Sys_Sleep_ms(unsigned int miliseconds);
+
+
 // multi-platform thread create
 
 #ifndef _WIN32

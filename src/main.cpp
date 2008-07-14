@@ -7,15 +7,6 @@
 #include <fstream>
 #include "common.h"
 #include "conf.h"
-#ifdef WIN32
-#include "windows.h"
-#else
-#include <sys/socket.h>
-#include <netdb.h>
-#include <unistd.h>
-#define Sleep(x) usleep((x)*1000)
-#define closesocket close
-#endif
 #include "utils.h"
 #include "qw.h"
 #include "http.h"
@@ -298,7 +289,17 @@ public:
 		while (!this->breakrun) {
 			PerformAllUntil(AppClock.GetAppTime());
 			event_gc.FreeAll();
-			Sleep(100);
+			int sleepint = CALENDAR_LOOP_SLEEP_MIN_INTERVAL;
+
+			if (!q.empty()) {
+				apptime diff = q.top()->time - AppClock.GetAppTime();
+				if (diff > 2) {
+					// we have more than 2 seconds, let's get some larger sleep and not waste system resources
+					sleepint = 1000 * (diff-2);
+				}
+			}
+			
+			Sys_Sleep_ms(sleepint);
 		}
 		this->running = false;
 	}
@@ -656,7 +657,7 @@ int main(int argc, char **argv)
 
 	cal.Break();
 	printf("Waiting for calendar to terminate...");
-	while (cal.Running()) { Sleep(100); }
+	while (cal.Running()) { Sys_Sleep_ms(100); }
 	printf("ok\n");
 #ifndef WITHOUT_IRC
 	IRCDeinit();

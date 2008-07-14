@@ -12,7 +12,6 @@
 #include <sys/types.h>
 #include <netdb.h>
 #include <unistd.h>
-#define Sleep(x) usleep((x)*1000)
 #endif
 #include "qw.h"
 #include "sockets.h"
