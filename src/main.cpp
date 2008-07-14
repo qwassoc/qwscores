@@ -46,7 +46,12 @@ int cmpplayerscore(const void *pa, const void *pb)
 {
 	playerscore *a = (playerscore *) pa, *b = (playerscore *) pb;
 
-	return a->frags < b->frags;
+	if (a->frags < b->frags)
+		return -1;
+	else if (a->frags > b->frags)
+		return 1;
+	else
+		return 0;
 }
 
 int cmpplayerscoreteam(const void *pa, const void *pb)
@@ -54,10 +59,10 @@ int cmpplayerscoreteam(const void *pa, const void *pb)
 	playerscore *a = (playerscore *) pa, *b = (playerscore *) pb;
 
 	int r = strcmp(a->team.c_str(), b->team.c_str());
-	if (!r) {
-		return a->frags < b->frags;
-	}
-	else return r;
+	if (r)
+		return r;
+	else
+		return cmpplayerscore(pa, pb);
 }
 
 void Console_Send(const serverinfo & s, const char *ip, short port, playerscore *scores)
