@@ -27,10 +27,6 @@ struct HttpTarget {
 typedef std::list<HttpTarget> http_targets_t;
 static http_targets_t http_targets;
 
-void HTTP_Init(void)
-{
-}
-
 bool ParseURL(const char *url, std::string & server, short & port, std::string & script)
 {
 	if (!strstarts(url, "http://")) {
@@ -101,7 +97,7 @@ static void add_http_query(char *s, size_t bufsize, const char *key, const char 
 void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore *scores, bool teamplay, const char *http_host, short http_port, const char *http_script)
 {
 	size_t numscores = s.players.size();
-	SOCKET http_socket = getsocktcp(ip, port);
+	SOCKET http_socket = getsocktcp(http_host, http_port);
 
 	if (http_socket == INVALID_SOCKET) {
 		printf("Couldn't connect to %s on HTTP port (%d)\n", ip, (int) port);
@@ -161,6 +157,9 @@ void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore 
 	int l = recv(http_socket, request, HTTP_REQUEST_BUFFER, 0);
 	if (l > 0) {
 		request[l] = '\0';
+	}
+	else {
+		request[0] = '\0';
 	}
 	if (!strstarts(request, "HTTP/1.1 200 OK")) {
 		printf("HTTP server '%s' replied with an error:\n", ip);
