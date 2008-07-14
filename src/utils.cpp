@@ -90,8 +90,12 @@ void Sys_Sleep_ms(unsigned int miliseconds)
 #ifdef WIN32
 	Sleep(miliseconds);
 #else
-	if ((miliseconds % 1000) == 0) {
+	if (miliseconds > 1000) {
 		sleep(miliseconds/1000); // convert to seconds
+		miliseconds = miliseconds % 1000;
+		if (miliseconds) {
+			usleep(miliseconds*1000);
+		}
 	}
 	else {
 		usleep(miliseconds*1000); // convert to microseconds
