@@ -114,6 +114,7 @@ void HTTP_SendOne(const serverinfo & s, const char *ip, short port, playerscore 
 	add_http_query(query, HTTP_REQUEST_BUFFER, "host", s.GetEntryStr("hostname"));
 	add_http_query(query, HTTP_REQUEST_BUFFER, "map", s.GetEntryStr("map"));
 	add_http_query(query, HTTP_REQUEST_BUFFER, "teamplay", teamplay ? "1" : "0");
+	add_http_query(query, HTTP_REQUEST_BUFFER, "timelimit", s.GetEntryStr("timelimit"));
 	
 	char players_str[16];
 	snprintf(players_str, 16, "%u", s.players.size());
