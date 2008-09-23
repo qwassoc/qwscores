@@ -1,3 +1,9 @@
-- irc auth
 - ragequit protection/handling
+- better active servers management (servers tend to get removed when they are not supposed to)
+ - remove servers with invalid status immediately
+ - scan more times before deciding that server is really dead at the moment (packets might get lost)
+ - use fixed time (about 20 minutes) for dead servers, don't remove them
+ - count consecutive dead states, when crossed 2 days border, remove them
+ - re-load master server every 12 hours
+- irc auth
 - flood protection
