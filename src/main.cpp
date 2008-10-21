@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <ctime>
 #include <queue>
 #include <set>
@@ -264,7 +265,9 @@ static void TestIPSET(void)
 
 class Calendar {
 private:
-	std::priority_queue<EventP, std::vector<EventP>, CompEvent> q;
+	typedef std::priority_queue<EventP, std::vector<EventP>, CompEvent> queue_t;
+	queue_t lp_q;
+	queue_t hp_q;
 	EventGC event_gc;
 	bool running;
 	bool breakrun;
@@ -273,11 +276,12 @@ private:
 public:
 	Calendar() : running(false), breakrun(false) {}
 
-	void Add(ServerScan *e);
+	void Add(ServerScan *e, bool high_priority = false);
 
 	bool Has(const char *ip, short port) { return ip_set.Has(ip, port); }
 
-	void PerformAllUntil(apptime t) {
+	void PerformQueue(queue_t & q, apptime t)
+	{
 		while (!q.empty() && q.top()->time <= t) {
 			Event *e = q.top();
 			q.pop();
@@ -285,6 +289,25 @@ public:
 		}
 		if (q.empty()) {
 			//printf("Warning: Calendar is empty!\n");
+		}
+	}
+
+	void PerformAllUntil(apptime t) {
+		PerformQueue(hp_q, t);
+		PerformQueue(lp_q, t);
+	}
+
+	bool queues_empty() const { return hp_q.empty() && lp_q.empty(); }
+
+	apptime next_event_time() const
+	{
+		if (hp_q.empty() && lp_q.empty()) return 0;
+		else if (!hp_q.empty() && lp_q.empty()) return hp_q.top()->time;
+		else if (hp_q.empty() && !lp_q.empty()) return lp_q.top()->time;
+		else /* both queues not empty */ {
+			apptime lpq_t = lp_q.top()->time;
+			apptime hpq_t = hp_q.top()->time;
+			return (lpq_t < hpq_t) ? lpq_t : hpq_t;
 		}
 	}
 
@@ -296,8 +319,8 @@ public:
 			event_gc.FreeAll();
 			int sleepint = CALENDAR_LOOP_SLEEP_MIN_INTERVAL;
 
-			if (!q.empty()) {
-				apptime diff = q.top()->time - AppClock.GetAppTime();
+			if (!queues_empty()) {
+				apptime diff = next_event_time() - AppClock.GetAppTime();
 				if (diff > 2) {
 					// we have more than 2 seconds, let's get some larger sleep and not waste system resources
 					sleepint = 1000 * (diff-2);
@@ -362,7 +385,7 @@ public:
 
 void Calendar::ScheduleMasterScan(apptime t, const std::string & ip, short port)
 {
-	this->q.push(new MasterScan(this, t, ip, port));
+	this->lp_q.push(new MasterScan(this, t, ip, port));
 }
 
 class ServerScan : public Event {
@@ -390,10 +413,10 @@ public:
 	const char *GetIP(void) const { return ip; }
 	short GetPort(void) const { return port; }
 
-	void RescheduleIn(unsigned int delay) {
+	void RescheduleIn(unsigned int delay, bool high_priority = false) {
 		// printf("Next scan of %s:%d in %u secs\n", ip, port, delay);
 		time = AppClock.GetAppTime() + delay;
-		calendar->Add(this);
+		calendar->Add(this, high_priority);
 	}
 
 	virtual void Perform(void)
@@ -414,7 +437,7 @@ public:
 				this->calendar->AddToGC(this);
 			}
 			else {
-				RescheduleIn(deadtimes*DEAD_TIME_RESCHEDULE);
+				RescheduleIn(DEAD_TIME_RESCHEDULE+(rand()%180));
 			}
 			break;
 
@@ -426,7 +449,7 @@ public:
 				this->calendar->AddToGC(this);
 			}
 			else {
-				RescheduleIn(unknownstatus_count*DEAD_TIME_RESCHEDULE);
+				RescheduleIn(DEAD_TIME_RESCHEDULE+(rand()%180));
 			}
 			break;
 
@@ -448,10 +471,10 @@ public:
 				ReportMatchStart(ip, port, *sinfo);
 			}
 			if (tl == MIN_TIMELEFT || tl == SUDDENDEATH_TIMELEFT) {
-				RescheduleIn(MICROSCANTIME);
+				RescheduleIn(MICROSCANTIME, true);
 			}
 			else if (tl > MIN_TIMELEFT) {
-				RescheduleIn((tl-1) * 60);
+				RescheduleIn((tl-1) * 60, true);
 			}
 			else {
 				RescheduleIn(STANDBY_RESCHEDULE);
@@ -466,8 +489,13 @@ public:
 	}
 };
 
-void Calendar::Add(ServerScan *e) {
-	this->q.push(e);
+void Calendar::Add(ServerScan *e, bool high_priority) {
+	if (high_priority) {
+		this->hp_q.push(e);
+	}
+	else {
+		this->lp_q.push(e);
+	}
 	this->ip_set.Add(e->GetIP(), e->GetPort());
 }
 

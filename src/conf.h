@@ -63,8 +63,8 @@ void Conf_AcceptCommand(const char *line, bool & breakflag);
 #define LONGINTERVAL (3*60)
 #define MICROSCAN 2
 #define DEAD_TIME_RESCHEDULE (20*60)
-#define MAX_DEAD_TIMES 2
-#define MAX_UNKNOWN_COUNT 2
+#define MAX_DEAD_TIMES 100
+#define MAX_UNKNOWN_COUNT 30
 #define UNKNOWN_TIME_RESCHEDULE (10*60)
 #define STANDBY_RESCHEDULE (3*60)
 #define MIN_TIMELEFT 1
