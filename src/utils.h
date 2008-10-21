@@ -8,9 +8,14 @@
 
 // string manipulation
 
+#if defined(_WIN32) && !defined(_MSC_VER)
+#define __format_string
+#endif
+
 #ifdef _WIN32
 
 #include <cstring>
+#include <cstdarg>
 
 int snprintf(char *buffer, size_t count, __format_string char const *format, ...);
 
