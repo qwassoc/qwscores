@@ -5,3 +5,5 @@ void HTTP_Send(const serverinfo & s, const char *ip, short port, playerscore *sc
 void HTTP_Init(void);
 
 void HTTP_AddTarget(const char *url, bool &);
+
+void HTTP_Ping(const char *url);

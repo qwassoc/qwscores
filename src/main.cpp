@@ -351,8 +351,40 @@ public:
 		printf("Active IPs: %d\n", ip_set.size());
 	}
 
+	void AddPingUrl(const char* url, apptime t);
+
 	void ScheduleMasterScan(apptime t, const std::string & ip, short port);
 };
+
+class PingURL : public Event {
+private:
+	const char *url;
+	Calendar *calendar;
+
+public:
+	PingURL(const char* url_, apptime t_, Calendar *calendar_) : Event(t_), calendar(calendar_)
+	{
+		url = strdup(url_);
+	}
+
+	virtual void Perform(void)
+	{
+		HTTP_Ping(url);
+		calendar->AddPingUrl(url, AppClock.GetAppTime() + PING_INTERVAL);
+	}
+
+	~PingURL()
+	{
+		if (url) {
+			delete url;
+		}
+	}
+};
+
+void Calendar::AddPingUrl(const char* url, apptime t)
+{
+	this->lp_q.push(new PingURL(url, t, this));
+}
 
 static DWORD WINAPI CALRUN(void *param)
 {
@@ -634,6 +666,17 @@ void Cmd_AddFileList(const char* args, bool &)
 	}
 }
 
+void Cmd_AddPingURL(const char* args, bool &)
+{
+	if (*args && strstarts(args, "http://")) {
+		printf("Adding ping url %s\n", args);
+		cal.AddPingUrl(args, AppClock.GetAppTime());
+	}
+	else {
+		printf("Usage: addpingurl http://...");
+	}
+}
+
 void Cmd_Help(const char *args, bool &)
 {
 	Conf_ListCommands();
@@ -648,6 +691,7 @@ void Main_AddCmds(void)
 	Conf_CmdAdd("addmaster", Cmd_AddMaster);
 	Conf_CmdAdd("addhttp", HTTP_AddTarget);
 	Conf_CmdAdd("addfilelist", Cmd_AddFileList);
+	Conf_CmdAdd("addpingurl", Cmd_AddPingURL);
 	Conf_CmdAdd("help", Cmd_Help);
 }
 
