@@ -14,34 +14,11 @@
 #ifndef WITHOUT_IRC
 #include "irc.h"
 #endif
+#include "events.h"
+#include "calendar.h"
 
-
+// disable iso c++
 #pragma warning( disable : 4996)
-
-typedef int apptime;
-
-class Clock {
-public:
-	Clock() {
-		clockstart = time(0);
-	}
-
-	apptime GetAppTime(void) const {
-		return (apptime) difftime(time(0), clockstart);
-	}
-
-private:
-	time_t clockstart;
-};
-static Clock AppClock;
-
-class Event {
-public:
-	apptime time;
-	Event(apptime t_) : time(t_) {}
-	virtual void Perform(void) {}
-	virtual ~Event() {}
-};
 
 int cmpplayerscore(const void *pa, const void *pb)
 {
@@ -165,81 +142,6 @@ void ReportMatchStart(const char *ip, short port, const serverinfo & s)
 		s.GetEntryStr("hostname"), ip, port);
 }
 
-typedef Event* EventP;
-
-class CompEvent {
-public:
-	bool operator() (const EventP a, const EventP b) {
-		return a->time > b->time;
-	}
-};
-
-class ServerScan;
-class EventGC {
-public:
-	std::deque<ServerScan*> q;
-	void Add(ServerScan* s) {
-		q.push_back(s);
-	}
-
-	void FreeAll();
-};
-
-static DWORD WINAPI CALRUN(void *param);
-
-struct ltstr
-{
-	bool operator()(const char* s1, const char* s2) const {
-		return strcmp(s1, s2) < 0;
-	}
-};
-
-class IP_set {
-public:
-	void Add(const char* ip, short port);
-	bool Has(const char* ip, short port);
-	void Rem(const char* ip, short port);
-	size_t size(void) const { return inset.size(); }	
-private:
-	typedef std::set<const char *, ltstr> inset_t;
-	inset_t inset;
-};
-
-void IP_set::Add(const char *ip, short port)
-{
-	char buf[64];
-	snprintf(buf, sizeof(buf), "%s:%d", ip, port);
-	
-	char *ipstr = strdup(buf);
-	if (ipstr) {
-		inset.insert(ipstr);
-	}
-}
-
-bool IP_set::Has(const char *ip, short port)
-{
-	char buf[64];
-	snprintf(buf, sizeof(buf), "%s:%d", ip, port);
-
-	if (inset.empty()) return false;
-
-	return inset.find(buf) != inset.end();
-}
-
-void IP_set::Rem(const char *ip, short port)
-{
-	char buf[64];
-	snprintf(buf, sizeof(buf), "%s:%d", ip, port);
-
-	if (Has(ip, port)) {
-		inset_t::iterator f = inset.find(buf);
-		if (f != inset.end()) {
-			free((void *) *f);
-			inset.erase(f);
-		}
-	}
-}
-
 static void TestIPSET(void)
 {
 	IP_set a;
@@ -263,294 +165,13 @@ static void TestIPSET(void)
 	a.Rem("1.2.3.4", 1);
 }
 
-class Calendar {
-private:
-	typedef std::priority_queue<EventP, std::vector<EventP>, CompEvent> queue_t;
-	queue_t lp_q;
-	queue_t hp_q;
-	EventGC event_gc;
-	bool running;
-	bool breakrun;
-	IP_set ip_set;
-
-public:
-	Calendar() : running(false), breakrun(false) {}
-
-	void Add(ServerScan *e, bool high_priority = false);
-
-	bool Has(const char *ip, short port) { return ip_set.Has(ip, port); }
-
-	void PerformQueue(queue_t & q, apptime t)
-	{
-		while (!q.empty() && q.top()->time <= t) {
-			Event *e = q.top();
-			q.pop();
-			e->Perform();
-		}
-		if (q.empty()) {
-			//printf("Warning: Calendar is empty!\n");
-		}
-	}
-
-	void PerformAllUntil(apptime t) {
-		PerformQueue(hp_q, t);
-		PerformQueue(lp_q, t);
-	}
-
-	bool queues_empty() const { return hp_q.empty() && lp_q.empty(); }
-
-	apptime next_event_time() const
-	{
-		if (hp_q.empty() && lp_q.empty()) return 0;
-		else if (!hp_q.empty() && lp_q.empty()) return hp_q.top()->time;
-		else if (hp_q.empty() && !lp_q.empty()) return lp_q.top()->time;
-		else /* both queues not empty */ {
-			apptime lpq_t = lp_q.top()->time;
-			apptime hpq_t = hp_q.top()->time;
-			return (lpq_t < hpq_t) ? lpq_t : hpq_t;
-		}
-	}
-
-	void AddToGC(ServerScan *s);
-
-	void Loop(void) {
-		while (!this->breakrun) {
-			PerformAllUntil(AppClock.GetAppTime());
-			event_gc.FreeAll();
-			int sleepint = CALENDAR_LOOP_SLEEP_MIN_INTERVAL;
-
-			if (!queues_empty()) {
-				apptime diff = next_event_time() - AppClock.GetAppTime();
-				if (diff > 2) {
-					// we have more than 2 seconds, let's get some larger sleep and not waste system resources
-					sleepint = 1000 * (diff-2);
-				}
-			}
-			
-			Sys_Sleep_ms(sleepint);
-		}
-		this->running = false;
-	}
-
-	void Break(void) {
-		this->breakrun = true;
-	}
-
-	bool Running(void) const {
-		return this->running;
-	}
-
-	void StartLoop(void)
-	{
-		this->running = true;
-		this->breakrun = false;
-		Sys_CreateThread(CALRUN, this);
-	}
-
-	void PrintStatus(void) const {
-		printf("Active IPs: %d\n", ip_set.size());
-	}
-
-	void AddPingUrl(const char* url, apptime t);
-
-	void ScheduleMasterScan(apptime t, const std::string & ip, short port);
-};
-
-class PingURL : public Event {
-private:
-	const char *url;
-	Calendar *calendar;
-
-public:
-	PingURL(const char* url_, apptime t_, Calendar *calendar_) : Event(t_), calendar(calendar_)
-	{
-		url = strdup(url_);
-	}
-
-	virtual void Perform(void)
-	{
-		HTTP_Ping(url);
-		calendar->AddPingUrl(url, AppClock.GetAppTime() + PING_INTERVAL);
-	}
-
-	~PingURL()
-	{
-		if (url) {
-			delete url;
-		}
-	}
-};
-
-void Calendar::AddPingUrl(const char* url, apptime t)
-{
-	this->lp_q.push(new PingURL(url, t, this));
-}
-
-static DWORD WINAPI CALRUN(void *param)
-{
-	Calendar *cal = (Calendar *) param;
-	cal->Loop();
-	return 0;
-}
-
-void NewIP(const char *ip, short port, void *cal_, int c);
-
-class MasterScan : public Event {
-private:
-	Calendar *calendar;
-	std::string ip;
-	short port;
-
-public:
-	MasterScan(Calendar *calendar_, apptime t, const std::string & ip_, short port_)
-		: calendar(calendar_), Event(t), ip(ip_), port(port_)
-	{}
-
-	virtual void Perform(void) {
-		calendar->ScheduleMasterScan(AppClock.GetAppTime() + QW_MASTER_RESCAN_TIME, ip, port);
-		QW_ScanSource(ip.c_str(), port, NewIP, (void *) calendar);	
-		
-		// dangerous, but works so far
-		delete this;
-	}
-};
-
-void Calendar::ScheduleMasterScan(apptime t, const std::string & ip, short port)
-{
-	this->lp_q.push(new MasterScan(this, t, ip, port));
-}
-
-class ServerScan : public Event {
-private:
-	server_status laststatus;
-	const char *ip;
-	short port;
-	unsigned int deadtimes;
-	unsigned int unknownstatus_count;
-	Calendar *calendar;
-
-public:
-	ServerScan(const char *ip_, short port_, Calendar *calendar_, apptime t)
-		: Event(t), port(port_), laststatus(SVST_standby), deadtimes(0), calendar(calendar_),
-		unknownstatus_count(0)
-	{
-		ip = strdup(ip_);
-		printf("Adding %s:%d\n", ip, port);
-	}
-
-	~ServerScan() {
-		delete ip;
-	}
-
-	const char *GetIP(void) const { return ip; }
-	short GetPort(void) const { return port; }
-
-	void RescheduleIn(unsigned int delay, bool high_priority = false) {
-		// printf("Next scan of %s:%d in %u secs\n", ip, port, delay);
-		time = AppClock.GetAppTime() + delay;
-		calendar->Add(this, high_priority);
-	}
-
-	virtual void Perform(void)
-	{
-		server_status newstatus;
-		unsigned int tl;
-		serverinfo *sinfo = new serverinfo;
-		bool deferred_dealloc = false;
-
-		QW_ScanSV(ip, port, newstatus, tl, *sinfo);
-		switch (newstatus) {
-		case SVST_dead:
-			printf("Dead: %s:%d\n", ip, port);
-			if (++deadtimes >= MAX_DEAD_TIMES) {
-				printf("Server %s:%d was found dead for %d scans and was removed\n",
-					ip, port, deadtimes);
-
-				this->calendar->AddToGC(this);
-			}
-			else {
-				RescheduleIn(DEAD_TIME_RESCHEDULE+(rand()%180));
-			}
-			break;
-
-		case SVST_nostatus:
-			unknownstatus_count++;
-			printf("No status: \"%s\" %s:%d\n", sinfo->GetEntryStr("hostname"), ip, port);
-			if (unknownstatus_count >= MAX_UNKNOWN_COUNT) {
-				printf("Removed: \"%s\" %s:%d (no status)\n", sinfo->GetEntryStr("hostname"), ip, port);
-				this->calendar->AddToGC(this);
-			}
-			else {
-				RescheduleIn(DEAD_TIME_RESCHEDULE+(rand()%180));
-			}
-			break;
-
-		case SVST_unknownstatus:
-			printf("  %s:%d \"%s\"\n", ip, port, sinfo->GetEntryStr("hostname"));
-			break;
-
-		case SVST_standby:
-			if (laststatus == SVST_match) {
-				if (laststatus == SVST_match) {
-					ReportMatchEnd(ip, port, sinfo, deferred_dealloc);
-				}
-			}
-			RescheduleIn(STANDBY_RESCHEDULE);
-			break;
-
-		case SVST_match:
-			if (laststatus != SVST_match) {
-				ReportMatchStart(ip, port, *sinfo);
-			}
-			if (tl == MIN_TIMELEFT || tl == SUDDENDEATH_TIMELEFT) {
-				RescheduleIn(MICROSCANTIME, true);
-			}
-			else if (tl > MIN_TIMELEFT) {
-				RescheduleIn((tl-1) * 60, true);
-			}
-			else {
-				RescheduleIn(STANDBY_RESCHEDULE);
-			}
-			break;
-		}
-
-		laststatus = newstatus;
-		if (!deferred_dealloc) {
-			delete sinfo;
-		}
-	}
-};
-
-void Calendar::Add(ServerScan *e, bool high_priority) {
-	if (high_priority) {
-		this->hp_q.push(e);
-	}
-	else {
-		this->lp_q.push(e);
-	}
-	this->ip_set.Add(e->GetIP(), e->GetPort());
-}
-
-void Calendar::AddToGC(ServerScan *s) {
-	ip_set.Rem(s->GetIP(), s->GetPort());
-	event_gc.Add(s);
-}
-
-void EventGC::FreeAll() {
-	while (!q.empty()) {
-		ServerScan *s = q.front();
-		delete s;
-		q.pop_front();
-	}
-}
-
 void NewIP(const char *ip, short port, void *cal_, int c)
 {
 	Calendar *cal = (Calendar *) cal_;
 
 	if (!cal->Has(ip, port)) {
 		cal->Add(new ServerScan(ip, port, cal, 
-			(apptime) (AppClock.GetAppTime() + c*INITIAL_SCANS_INTERVAL)));
+			(apptime) (Clock::get()->GetAppTime() + c*INITIAL_SCANS_INTERVAL)));
 	}
 }
 
@@ -637,7 +258,7 @@ void Cmd_AddMaster(const char* args, bool &)
 	std::string ip = GetIP(args);
 	short port = GetPort(args, QW_DEFAULT_MASTER_SERVER_PORT);
 
-	cal.ScheduleMasterScan(AppClock.GetAppTime(), ip.c_str(), port);
+	cal.ScheduleMasterScan(Clock::get()->GetAppTime(), ip.c_str(), port);
 }
 
 void Cmd_AddFileList(const char* args, bool &)
@@ -670,7 +291,7 @@ void Cmd_AddPingURL(const char* args, bool &)
 {
 	if (*args && strstarts(args, "http://")) {
 		printf("Adding ping url %s\n", args);
-		cal.AddPingUrl(args, AppClock.GetAppTime());
+		cal.AddPingUrl(args, Clock::get()->GetAppTime());
 	}
 	else {
 		printf("Usage: addpingurl http://...");

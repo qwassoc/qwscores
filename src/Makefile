@@ -17,7 +17,9 @@ OFILES = \
 	irc.o	\
 	qw.o \
 	conf.o \
-	sockets.o
+	sockets.o \
+	calendar.o \
+	events.o
 
 build: clean dep all
 

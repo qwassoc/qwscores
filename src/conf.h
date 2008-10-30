@@ -72,5 +72,6 @@ void Conf_AcceptCommand(const char *line, bool & breakflag);
 #define MICROSCANTIME 2
 #define INITIAL_SCANS_INTERVAL (0.33)
 #define CALENDAR_LOOP_SLEEP_MIN_INTERVAL 100
+#define MAX_SLEEP_TIME (1000*5)
 
 #define PING_INTERVAL (60*2)
