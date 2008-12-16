@@ -74,6 +74,7 @@ void QW_ScanSource(const char *ip, short port, NewServer_fnc report, void *arg)
 				  
 	if (ret < 0) {
 		printf("Couldn't send query to master server\n");
+		closesocket(newsocket);
         return;
 	}
 
@@ -131,12 +132,14 @@ char *QW_QueryGetRawReply(const char *ip, short port)
 	}
 
 	if (send(s, QW_SERVER_QUERY, QW_SERVER_QUERY_LEN, 0) == SOCKET_ERROR) {
+		closesocket(s);
 		return 0;
 	}
 
 	size_t packetlen;
 	char *packet = getpacket(s, &packetlen, QW_SERVER_QUERY_TIMEOUT_SEC, QW_SERVER_QUERY_TIMEOUT_USEC);
 	if (!packet) {
+		closesocket(s);
 		return 0;
 	}
 	closesocket(s);

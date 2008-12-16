@@ -101,6 +101,7 @@ void HTTP_SendAndReceive(SOCKET http_socket, const char* request, const char* se
 	// printf("%s",request);
 	if (send(http_socket, request, strlen(request) + 1, 0) < 0) {
 		printf("Couldn't send to HTTP server\n");
+		closesocket(http_socket);
 		return;
 	}
 
