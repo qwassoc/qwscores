@@ -286,8 +286,15 @@ bool QW_ParseQWReply(char *d, serverinfo & svinfo)
 
 bool QW_QueryGetReply(const char *ip, short port, serverinfo & svinfo)
 {
-	char *f = QW_QueryGetRawReply(ip, port);
+	int i;
+	char *f = NULL;
 
+	for (i = 1; i <= QW_SERVER_QUERY_ATTEMPTS; i++)
+	{
+		f = QW_QueryGetRawReply(ip, port);
+		if (f) break;
+	}
+	
 	if (!f) {
 		return false;
 	}
