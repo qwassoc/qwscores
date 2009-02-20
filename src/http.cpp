@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cctype>
+#include <cstdlib>
 #include "memory.h"
 #include "common.h"
 

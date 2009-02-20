@@ -1,4 +1,6 @@
 #include <fstream>
+#include <cstdlib>
+#include <cstring>
 #include "conf.h"
 #include "utils.h"
 
