@@ -56,7 +56,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wsock32.lib libircclient-static.lib"
+				AdditionalDependencies="ws2_32.lib libircclient-static.lib"
 				AdditionalLibraryDirectories="src/gamestat;src/libircclient"
 				IgnoreDefaultLibraryNames="LIBC"
 				GenerateDebugInformation="true"
@@ -131,7 +131,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wsock32.lib libircclient-static.lib"
+				AdditionalDependencies="ws2_32.lib libircclient-static.lib"
 				AdditionalLibraryDirectories="src/libircclient"
 				IgnoreDefaultLibraryNames="LIBC"
 				OptimizeReferences="2"
