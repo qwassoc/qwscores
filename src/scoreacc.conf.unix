@@ -1,10 +1,12 @@
 // available commands are:
 // addmaster, addip, addhttp, addchannel
 
-addchannel #qw.results
+// this scans QuakeWorld master server for a list of servers
 addmaster master.quakeservers.net
-addhttp http://quakephil.com/johnny/index.php
-addhttp http://cqe.rytir.com/qwresults/submit.php
-addhttp http://www.skynet.ie/~geronimo/submit.php
 
-irc connect
+// this will make the bot report results using the POST method to the given webpage
+addhttp http://example.com/submit_scores.php
+
+// uncomment these if you want the bot to connect to IRC
+// irc connect
+// addchannel #qw.results
