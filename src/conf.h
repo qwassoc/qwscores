@@ -36,6 +36,9 @@ void Conf_ListCommands(void);
 
 void Conf_AcceptCommand(const char *line, bool & breakflag);
 
+void Conf_AddIRCChan(const char *ircchan, bool &);
+
+const std::list<std::string> & Conf_GetIRCChans(void);
 
 // QuakeWorld
 #define QW_DEFAULT_MASTER_SERVER_PORT 27000
@@ -51,12 +54,8 @@ void Conf_AcceptCommand(const char *line, bool & breakflag);
 #define HTTP_REQUEST_BUFFER 10240
 
 // Internet Relay Chat settings
-#define IRC_CHANNEL "#qw.results"
 #define IRC_KEY 0
-#define IRC_SERVER "irc.quakenet.org"
-#define IRC_PORT 6667
 #define IRC_PASSWORD 0
-#define IRC_NICK "qw-results-bot"
 #define IRC_REALNAME "made by JohnNy_cz"
 #define IRC_USERNAME "qwresults"
 

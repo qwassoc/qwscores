@@ -314,6 +314,7 @@ void Main_AddCmds(void)
 	Conf_CmdAdd("addfilelist", Cmd_AddFileList);
 	Conf_CmdAdd("addpingurl", Cmd_AddPingURL);
 	Conf_CmdAdd("help", Cmd_Help);
+	Conf_CmdAdd("addchannel", Conf_AddIRCChan);
 }
 
 int main(int argc, char **argv)

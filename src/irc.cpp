@@ -11,6 +11,7 @@
 #include "utils.h"
 #include "libircclient.h"
 #include "qw.h"
+#include <string>
 
 
 void IRCConnect(void);
@@ -24,10 +25,17 @@ struct IRCSupport {
 	IRCSupport() : ready(false), session(0) {}
 };
 static IRCSupport IRC;
+static std::string ircserver;
+static unsigned short ircport;
+static std::string ircnick;
 
 static void IRC_event_connect (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
 {
-	irc_cmd_join(IRC.session, IRC_CHANNEL, IRC_KEY);
+	const std::list<std::string> & chans = Conf_GetIRCChans();
+	for (std::list<std::string>::const_iterator it = chans.begin(); it != chans.end(); it++)
+	{
+		irc_cmd_join(IRC.session, it->c_str(), IRC_KEY);
+	}
 }
 
 static void IRC_event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
@@ -58,6 +66,15 @@ static DWORD WINAPI IRCRUN(void *param)
 	irc_run(IRC.session);
 
 	return 0;
+}
+
+static void IRC_SendToAllChans(irc_session_t *session, char *text)
+{
+	const std::list<std::string> & chans = Conf_GetIRCChans();
+	for (std::list<std::string>::const_iterator it = chans.begin(); it != chans.end(); it++)
+	{
+		irc_cmd_msg(IRC.session, it->c_str(), text);
+	}
 }
 
 void IRC_Send(const serverinfo & s, const char *ip, short port, playerscore *scores, bool teamplay)
@@ -112,17 +129,17 @@ void IRC_Send(const serverinfo & s, const char *ip, short port, playerscore *sco
 	
 	snprintf(msg1, sizeof(msg1), "[COLOR=OLIVE]##[/COLOR] [B]%s[B] (%s:%d) | [B]%s[/B]", s.GetEntryStr("hostname"), ip, port, s.GetEntryStr("map"));
 	colored = irc_color_convert_to_mirc(msg1);
-	irc_cmd_msg(IRC.session, IRC_CHANNEL, colored);
+	IRC_SendToAllChans(IRC.session, colored);
 	free(colored);
 
 	if (teamplay) {
 		colored = irc_color_convert_to_mirc(teamsline);
-		irc_cmd_msg(IRC.session, IRC_CHANNEL, colored);
+		IRC_SendToAllChans(IRC.session, colored);
 		free(colored);
 	}
 
 	colored = irc_color_convert_to_mirc(nicksline);
-	irc_cmd_msg(IRC.session, IRC_CHANNEL, colored);
+	IRC_SendToAllChans(IRC.session, colored);
 	free(colored);
 }
 
@@ -134,6 +151,21 @@ void IRCRaw(const char *cmd)
 	else {
 		irc_send_raw(IRC.session, "%s", cmd);
 	}
+}
+
+void IRC_SetIrcServer(const char *args, bool & quitflag)
+{
+	ircserver = std::string(args);
+}
+
+void IRC_SetIrcPort(const char *args, bool & quitflag)
+{
+	ircport = atoi(args);
+}
+
+void IRC_SetIrcNick(const char *args, bool & quitflag)
+{
+	ircnick = std::string(args);
 }
 
 void IRCInit(void)
@@ -159,16 +191,41 @@ void IRCInit(void)
 	IRC.callbacks.event_topic = IRC_event_general;
 
 	IRC.session = irc_create_session(&IRC.callbacks);
+	Conf_CmdAdd("setircserver", IRC_SetIrcServer);
+	Conf_CmdAdd("setircport", IRC_SetIrcPort);
+	Conf_CmdAdd("setircnick", IRC_SetIrcNick);
+}
+
+static bool IRC_CheckSettings(void)
+{
+	if (ircserver.empty()) {
+		printf("Error: no IRC server specified, use setircserver command.\n");
+		return false;
+	}
+
+	if (!ircport) {
+		printf("Error: no IRC server port specified, use setircport command.\n");
+		return false;
+	}
+
+	if (ircnick.empty()) {
+		printf("Error: no IRC nick specified, use setircnick command.\n");
+		return false;
+	}
+
+	return true;
 }
 
 void IRCConnect(void)
 {
 	if (IRC.session) {
-		if (irc_connect(IRC.session, IRC_SERVER, IRC_PORT, IRC_PASSWORD, IRC_NICK, IRC_USERNAME, IRC_REALNAME) == 0) {
-			Sys_CreateThread(IRCRUN, 0);
-		}
-		else {
-			printf("Error: Couldn't start IRC connection\n");
+		if (IRC_CheckSettings()) {
+			if (irc_connect(IRC.session, ircserver.c_str(), ircport, IRC_PASSWORD, ircnick.c_str(), IRC_USERNAME, IRC_REALNAME) == 0) {
+				Sys_CreateThread(IRCRUN, 0);
+			}
+			else {
+				printf("Error: Couldn't start IRC connection\n");
+			}
 		}
 	}
 	else {

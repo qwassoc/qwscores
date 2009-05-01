@@ -13,11 +13,6 @@ void Conf_AddIRCChan(const char *ircchan, bool &)
 	conf.lists.irc_channels.push_back(ircchan);
 }
 
-void Conf_RegisterMainCommands(void)
-{
-	Conf_CmdAdd("addchannel", Conf_AddIRCChan);
-}
-
 void Conf_AcceptCommand(const char *line, bool & breakflag)
 {
 	char cmd[MAX_LINE_LENGTH];
@@ -77,6 +72,11 @@ int Conf_GetInt(const char *key)
 	else {
 		return 0;
 	}
+}
+
+const std::list<std::string> & Conf_GetIRCChans(void)
+{
+	return conf.lists.irc_channels;
 }
 
 bool Conf_Process(std::fstream & f)
