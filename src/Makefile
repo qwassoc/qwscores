@@ -28,7 +28,7 @@ clean:
 	
 dep:
 	$(CC) $(CCFLAGS) -MM *.cpp > .depend
-	
+
 .cpp.o:
 	$(CC) $(CCFLAGS) -c $<
 
