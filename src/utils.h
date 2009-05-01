@@ -32,6 +32,12 @@ size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 
 
+// min
+#ifndef min
+#define min(a,b) ((a) <= (b) ? (a) : (b))
+#endif
+
+
 // multi-platform sleep
 void Sys_Sleep_ms(unsigned int miliseconds);
 
