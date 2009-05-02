@@ -1,11 +1,10 @@
-// available commands are:
-// addmaster, addip, addhttp, addchannel
+// to list all available commands type "help" in the console
 
 // this scans QuakeWorld master server for a list of servers
 addmaster master.quakeservers.net
 
 // this will make the bot report results using the POST method to the given webpage
-addhttp http://example.com/submit_scores.php
+// addhttp http://example.com/submit_scores.php
 
 // uncomment these if you want the bot to connect to IRC
 // setircserver irc.quakenet.org
