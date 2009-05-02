@@ -350,6 +350,10 @@ int main(int argc, char **argv)
 
 	while (!breakflag) {
 		char cmdbuf[256];
+		if (std::cin.eof()) {
+			Sys_Sleep_ms(1000);
+			continue;
+		}
 		std::cin.getline(cmdbuf, sizeof(cmdbuf));
 		Conf_AcceptCommand(cmdbuf, breakflag);
 	}
