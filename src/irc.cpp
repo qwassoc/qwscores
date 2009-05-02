@@ -221,11 +221,11 @@ void IRCConnect(void)
 	if (IRC.session) {
 		if (IRC_CheckSettings()) {
 			int err;
-			if (err = irc_connect(IRC.session, ircserver.c_str(), ircport, IRC_PASSWORD, ircnick.c_str(), IRC_USERNAME, IRC_REALNAME) == 0) {
+			if ((err = irc_connect(IRC.session, ircserver.c_str(), ircport, IRC_PASSWORD, ircnick.c_str(), IRC_USERNAME, IRC_REALNAME)) == 0) {
 				Sys_CreateThread(IRCRUN, 0);
 			}
 			else {
-				printf("Error: Couldn't start IRC connection: '%s'\n", irc_strerror(err));
+				printf("Error: Couldn't start IRC connection: code %d = '%s'\n", err, irc_strerror(err));
 			}
 		}
 	}
