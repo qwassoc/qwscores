@@ -3,6 +3,7 @@
 #include <cstring>
 #include "conf.h"
 #include "utils.h"
+#include "irc.h"
 
 static Configuration conf;
 const char * const DEFAULT_CONF_FILENAME = "scoreacc.conf";
@@ -11,6 +12,7 @@ const int MAX_LINE_LENGTH = 10240;
 void Conf_AddIRCChan(const char *ircchan, bool &)
 {
 	conf.lists.irc_channels.push_back(ircchan);
+	IRC_JoinChannel(ircchan);
 }
 
 void Conf_AcceptCommand(const char *line, bool & breakflag)

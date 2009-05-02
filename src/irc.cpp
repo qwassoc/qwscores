@@ -20,9 +20,10 @@ void IRCConnect(void);
 struct IRCSupport {
 	irc_callbacks_t callbacks;
 	irc_session_t *session;
-	bool ready;
+	bool connected;  // true when we are connected to an IRC server
+	bool ready;  // true when if we are on some IRC chnanel already
 
-	IRCSupport() : ready(false), session(0) {}
+	IRCSupport() : connected(false), ready(false), session(0) {}
 };
 static IRCSupport IRC;
 static std::string ircserver;
@@ -36,6 +37,7 @@ static void IRC_event_connect (irc_session_t * session, const char * event, cons
 	{
 		irc_cmd_join(IRC.session, it->c_str(), IRC_KEY);
 	}
+	IRC.connected = true;
 }
 
 static void IRC_event_join (irc_session_t * session, const char * event, const char * origin, const char ** params, unsigned int count)
@@ -74,6 +76,18 @@ static void IRC_SendToAllChans(irc_session_t *session, char *text)
 	for (std::list<std::string>::const_iterator it = chans.begin(); it != chans.end(); it++)
 	{
 		irc_cmd_msg(IRC.session, it->c_str(), text);
+	}
+}
+
+void IRC_JoinChannel(const char *channel_name)
+{
+	if (IRC.connected) {
+		irc_cmd_join(IRC.session, channel_name, IRC_KEY);
+	}
+	else {
+		// we are not connected so the channel name will be remembered
+		// by the configuration module
+		// and we will join this channel on connection in the future
 	}
 }
 
