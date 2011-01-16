@@ -65,14 +65,17 @@ static char *url_encode(const char *s)
 
 	for (; *s && bp < 256; *s++)
 	{
-		if (isalnum(*s)) {
+		int c = (int) *s;
+		if (c < 0) { c += 256; }
+
+		if (isalnum(c)) {
 			innerbuf[bp++] = *s;
 			innerbuf[bp] = '\0';
 		}
 		else {
-			char enc[8];
+			char enc[16];
 
-			snprintf(enc, 8, "%%%x", *s);
+			snprintf(enc, 16, "%%%x", c);
 
 			strlcat(innerbuf, enc, 256);
 			bp += strlen(enc);

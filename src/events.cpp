@@ -67,6 +67,7 @@ ServerScan::ServerScan(const char *ip_, short port_, Calendar *calendar_, apptim
 {
 	ip = strdup(ip_);
 	printf("Adding %s:%d\n", ip, port);
+	last_good_serverinfo = NULL;
 }
 
 ServerScan::~ServerScan() {
@@ -84,6 +85,90 @@ void ServerScan::RescheduleIn(unsigned int delay, bool high_priority) {
 
 void ReportMatchEnd(const char *ip_, short port, const serverinfo *svinfo, bool & deferred_dealloc);
 void ReportMatchStart(const char *ip, short port, const serverinfo & s);
+
+bool ServerScan::isDroppedPlayers(const serverinfo & sinfo) const
+{
+	if (last_good_serverinfo == NULL) {
+		return false;
+	}
+
+	// new < last -> somebody dropped
+	return (sinfo.players.size() < last_good_serverinfo->players.size());
+}
+
+bool ServerScan::isScoreboardReset(const serverinfo & sinfo) const
+{
+	if (last_good_serverinfo == NULL) {
+		return false;
+	}
+
+	serverinfo::players_t::const_iterator pl_it;
+	for (pl_it = sinfo.players.begin(); pl_it != sinfo.players.end(); pl_it++) {
+		if (pl_it->frags != 0) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+/**
+ * Fixes the serverinfo in <code>sinfo</code> with entries from serverinfo kept
+ * in the last_good_server info.
+ * 
+ * The fixing process basically fills in players that left the server too early.
+ *
+ * @param sinfo Serverinfo to be fixed.
+ */
+void ServerScan::fixServerinfo(const serverinfo & sinfo)
+{
+	serverinfo *newinfo = new serverinfo(sinfo);
+	serverinfo::players_t::const_iterator pl_it;
+	std::map<int, serverinfo::players_t::const_iterator> userid_map;
+	serverinfo::players_t missing_players;
+
+	for (pl_it = sinfo.players.begin(); pl_it != sinfo.players.end(); pl_it++) {
+		userid_map.insert(std::pair<int, serverinfo::players_t::const_iterator>(pl_it->userid, pl_it));
+	}
+
+	for (pl_it = last_good_serverinfo->players.begin(); pl_it != last_good_serverinfo->players.end(); pl_it++) {
+		if (userid_map.find(pl_it->userid) == userid_map.end()) {
+			newinfo->players.push_back(*pl_it);
+		}
+	}
+
+	delete last_good_serverinfo;
+	last_good_serverinfo = newinfo;
+}
+
+void ServerScan::updateServerinfo(const serverinfo & sinfo)
+{
+	if (last_good_serverinfo == NULL) {
+		last_good_serverinfo = new serverinfo(sinfo);
+	}
+	else {
+		bool droppedPlayers = isDroppedPlayers(sinfo);
+		bool scoreboardReset = isScoreboardReset(sinfo);
+
+		if (scoreboardReset) {
+			// keep last_good_serverinfo, this one is unfixable
+		}
+		else if (droppedPlayers) {
+			fixServerinfo(sinfo);
+		}
+		else {
+			// this scores are ok, use them
+			delete last_good_serverinfo;
+			last_good_serverinfo = new serverinfo(sinfo);
+		}
+	}
+}
+
+void ServerScan::MatchStart(const serverinfo & sinfo)
+{
+	ReportMatchStart(ip, port, sinfo);
+	last_good_serverinfo = new serverinfo(sinfo);
+}
 
 void ServerScan::Perform(void)
 {
@@ -125,17 +210,15 @@ void ServerScan::Perform(void)
 
 	case SVST_standby:
 		if (laststatus == SVST_match) {
-			if (laststatus == SVST_match) {
-				ReportMatchEnd(ip, port, sinfo, deferred_dealloc);
-			}
+			updateServerinfo(*sinfo);
+			ReportMatchEnd(ip, port, last_good_serverinfo, deferred_dealloc);
 		}
 		RescheduleIn(STANDBY_RESCHEDULE);
 		break;
 
 	case SVST_match:
-		if (laststatus != SVST_match) {
-			ReportMatchStart(ip, port, *sinfo);
-		}
+		updateServerinfo(*sinfo);
+
 		if (tl == MIN_TIMELEFT || tl == SUDDENDEATH_TIMELEFT) {
 			RescheduleIn(MICROSCANTIME, true);
 		}
@@ -143,6 +226,7 @@ void ServerScan::Perform(void)
 			RescheduleIn((tl-1) * 60, true);
 		}
 		else {
+			// practically does not happen, but constants may change
 			RescheduleIn(STANDBY_RESCHEDULE);
 		}
 		break;

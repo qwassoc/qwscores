@@ -59,6 +59,12 @@ private:
 	unsigned int deadtimes;
 	unsigned int unknownstatus_count;
 	Calendar *calendar;
+	serverinfo *last_good_serverinfo;
+
+	void updateServerinfo(const serverinfo & sinfo);
+	void fixServerinfo(const serverinfo & sinfo);
+	bool isDroppedPlayers(const serverinfo & sinfo) const;
+	bool isScoreboardReset(const serverinfo & sinfo) const;
 
 public:
 	ServerScan(const char *ip_, short port_, Calendar *calendar_, apptime t);
@@ -67,6 +73,8 @@ public:
 
 	const char *GetIP(void) const;
 	short GetPort(void) const;
+
+	void MatchStart(const serverinfo & sinfo);
 
 	void RescheduleIn(unsigned int delay, bool high_priority = false);
 
