@@ -211,7 +211,13 @@ void ServerScan::Perform(void)
 	case SVST_standby:
 		if (laststatus == SVST_match) {
 			updateServerinfo(*sinfo);
-			ReportMatchEnd(ip, port, last_good_serverinfo, deferred_dealloc);
+			serverinfo *reported_serverinfo = new serverinfo(*last_good_serverinfo);
+			ReportMatchEnd(ip, port, reported_serverinfo, deferred_dealloc);
+			delete last_good_serverinfo;
+			last_good_serverinfo = NULL;
+			if (!deferred_dealloc) {
+				delete reported_serverinfo;
+			}
 		}
 		RescheduleIn(STANDBY_RESCHEDULE);
 		break;
@@ -233,7 +239,5 @@ void ServerScan::Perform(void)
 	}
 
 	laststatus = newstatus;
-	if (!deferred_dealloc) {
-		delete sinfo;
-	}
+	delete sinfo;
 }
