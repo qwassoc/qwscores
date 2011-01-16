@@ -79,6 +79,9 @@ short ServerScan::GetPort(void) const { return port; }
 
 void ServerScan::RescheduleIn(unsigned int delay, bool high_priority) {
 	// printf("Next scan of %s:%d in %u secs\n", ip, port, delay);
+	if (delay > STANDBY_RESCHEDULE) {
+		delay = STANDBY_RESCHEDULE;
+	}
 	time = Clock::get()->GetAppTime() + delay;
 	calendar->Add(this, high_priority);
 }
@@ -126,6 +129,10 @@ void ServerScan::fixServerinfo(const serverinfo & sinfo)
 	serverinfo::players_t::const_iterator pl_it;
 	std::map<int, serverinfo::players_t::const_iterator> userid_map;
 	serverinfo::players_t missing_players;
+
+	printf("Fixing report for %s, players dropped from %u to %u\n",
+		sinfo.GetEntryStr("hostname"), last_good_serverinfo->players.size(),
+		sinfo.players.size());
 
 	for (pl_it = sinfo.players.begin(); pl_it != sinfo.players.end(); pl_it++) {
 		userid_map.insert(std::pair<int, serverinfo::players_t::const_iterator>(pl_it->userid, pl_it));
